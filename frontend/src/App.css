@@ -1,0 +1,31 @@
+/* Standard Scrolling Behavior */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: hidden; /* Prevent horizontal scroll only */
+  /* Remove 'height: 100%' and 'overflow: hidden' */
+}
+
+/* Allow the app to grow */
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensure the layout takes AT LEAST the full screen, but can grow */
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh; /* Changed from height to min-height */
+  width: 100%;
+}
+
+/* Allow content to expand */
+.main-content {
+  flex: 1;
+  display: flex;       
+  flex-direction: column;
+  /* Removed 'overflow: hidden' so content isn't cut off */
+}
