@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 // Get backend URL
@@ -9,15 +9,26 @@ const Login = () => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // New state for visibility
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  
+  // ✅ NEW: Loading states
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingMsg, setLoadingMsg] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true); // 1. Start Loading
+    setLoadingMsg("");
 
-    if (isRegistering) {
-      try {
+    // 2. Set a timer: If it takes > 3 seconds, show the "Waking Up" message
+    const slowServerTimer = setTimeout(() => {
+       setLoadingMsg("⏳ Waking up the server... this may take up to 1 minute on the free tier.");
+    }, 3000);
+
+    try {
+      if (isRegistering) {
         const res = await fetch(`${BACKEND_BASE}/register`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -26,15 +37,11 @@ const Login = () => {
         if (!res.ok) throw new Error("Registration failed. Username might exist.");
         alert("Account created! Please log in.");
         setIsRegistering(false);
-      } catch (err) {
-        setError(err.message);
-      }
-    } else {
-      const formData = new URLSearchParams();
-      formData.append("username", username);
-      formData.append("password", password);
+      } else {
+        const formData = new URLSearchParams();
+        formData.append("username", username);
+        formData.append("password", password);
 
-      try {
         const res = await fetch(`${BACKEND_BASE}/token`, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -46,9 +53,14 @@ const Login = () => {
         const data = await res.json();
         localStorage.setItem("medinauts_token", data.access_token);
         navigate("/"); 
-      } catch (err) {
-        setError(err.message);
       }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      // 3. Cleanup: Stop loading and clear timer
+      clearTimeout(slowServerTimer);
+      setIsLoading(false);
+      setLoadingMsg("");
     }
   };
 
@@ -66,19 +78,19 @@ const Login = () => {
             onChange={(e) => setUsername(e.target.value)}
             style={inputStyle}
             required
+            disabled={isLoading} // Disable input while loading
           />
           
-          {/* Password Wrapper */}
           <div style={passwordWrapperStyle}>
             <input
-              type={showPassword ? "text" : "password"} // Toggle type here
+              type={showPassword ? "text" : "password"}
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              style={{...inputStyle, width: "100%"}} // Fill the wrapper
+              style={{...inputStyle, width: "100%"}}
               required
+              disabled={isLoading} // Disable input while loading
             />
-            {/* Toggle Icon */}
             <span 
               onClick={() => setShowPassword(!showPassword)} 
               style={toggleIconStyle}
@@ -87,16 +99,19 @@ const Login = () => {
             </span>
           </div>
 
-          <button type="submit" style={buttonStyle}>
-            {isRegistering ? "Sign Up" : "Log In"}
+          <button type="submit" style={{...buttonStyle, opacity: isLoading ? 0.7 : 1}} disabled={isLoading}>
+            {isLoading ? (isRegistering ? "Signing Up..." : "Logging In...") : (isRegistering ? "Sign Up" : "Log In")}
           </button>
         </form>
+        
+        {/* ✅ NEW: Show the slow server warning if needed */}
+        {loadingMsg && <p style={{ color: "#e65100", fontSize: "13px", marginTop: "10px", fontWeight: "bold" }}>{loadingMsg}</p>}
 
         <p style={{ marginTop: 20, fontSize: 14 }}>
           {isRegistering ? "Already have an account? " : "New to Medinauts? "}
           <span 
-            onClick={() => setIsRegistering(!isRegistering)} 
-            style={linkStyle}
+            onClick={() => !isLoading && setIsRegistering(!isRegistering)} 
+            style={{...linkStyle, cursor: isLoading ? "not-allowed" : "pointer", color: isLoading ? "#ccc" : "#007bff"}}
           >
             {isRegistering ? "Log In" : "Register Here"}
           </span>
@@ -106,22 +121,14 @@ const Login = () => {
   );
 };
 
-// --- STYLES ---
+// --- STYLES (Unchanged) ---
 const containerStyle = { height: "100vh", display: "flex", justifyContent: "center", alignItems: "center", background: "#f0f2f5" };
 const cardStyle = { padding: 40, background: "white", borderRadius: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", textAlign: "center", width: 350 };
 const formStyle = { display: "flex", flexDirection: "column", gap: 15, marginTop: 20 };
 const inputStyle = { padding: 12, borderRadius: 5, border: "1px solid #ddd", fontSize: 16, boxSizing: "border-box" };
 const buttonStyle = { padding: 12, background: "#b71c1c", color: "white", border: "none", borderRadius: 5, fontSize: 16, cursor: "pointer" };
 const linkStyle = { color: "#007bff", cursor: "pointer", fontWeight: "bold" };
-
-// New Styles for the toggle
 const passwordWrapperStyle = { position: "relative", display: "flex", alignItems: "center" };
-const toggleIconStyle = { 
-  position: "absolute", 
-  right: "10px", 
-  cursor: "pointer", 
-  fontSize: "18px",
-  userSelect: "none" 
-};
+const toggleIconStyle = { position: "absolute", right: "10px", cursor: "pointer", fontSize: "18px", userSelect: "none" };
 
 export default Login;
