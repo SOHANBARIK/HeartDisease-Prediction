@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaFileMedical, FaSync } from "react-icons/fa";
 
-// Ensure this matches your live Docker URL
+// Ensure this matches your live Render/Docker URL
 const BACKEND_BASE = (process.env.REACT_APP_BACKEND_URL || "https://heart-disease-prediction-1-fdo0.onrender.com").replace(/\/$/, "");
 const PREDICT_URL = `${BACKEND_BASE}/predict`;
 const SCAN_URL = `${BACKEND_BASE}/scan-report`;
@@ -10,21 +10,21 @@ const SCAN_URL = `${BACKEND_BASE}/scan-report`;
 const HeartFormModal = ({ close }) => {
   const navigate = useNavigate();
 
+  // 1. Initial State including cac_score
   const [form, setForm] = useState({
     age: "", sex: "", cp: "", trestbps: "", chol: "", fbs: "",
-    restecg: "", thalach: "", exang: "", oldpeak: "", slope: "", ca: "", thal: ""
+    restecg: "", thalach: "", exang: "", oldpeak: "", slope: "", ca: "", thal: "",
+    cac_score: 0 
   });
 
+  const [includeCAC, setIncludeCAC] = useState(false); // Toggle for CAC field
   const [loading, setLoading] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState(null);
-  
-  // Track missing fields to highlight them in red
   const [missingFields, setMissingFields] = useState([]);
 
-  // ✅ UPDATED: Handle Multiple File Scanning
+  // --- AUTO-FILL LOGIC (OCR) ---
   const handleScanReport = async (e) => {
-    // 1. Get all selected files
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
 
@@ -32,11 +32,10 @@ const HeartFormModal = ({ close }) => {
     setError(null);
     setMissingFields([]); 
 
-    let mergedData = {}; // Store results from all pages
+    let mergedData = {}; 
     let successCount = 0;
 
     try {
-      // 2. Loop through and scan each file one by one
       for (const file of files) {
         const formData = new FormData();
         formData.append("file", file);
@@ -51,7 +50,7 @@ const HeartFormModal = ({ close }) => {
                 const result = await res.json();
                 if (result.status === "success") {
                     successCount++;
-                    // 3. Merge Strategy: Only overwrite keys if the new value is NOT null
+                    // Merge Strategy: Only overwrite keys if the new value is NOT null
                     Object.keys(result.data).forEach(key => {
                         if (result.data[key] !== null && result.data[key] !== "") {
                             mergedData[key] = result.data[key];
@@ -66,35 +65,27 @@ const HeartFormModal = ({ close }) => {
 
       if (successCount === 0) throw new Error("Failed to read any reports. Please enter manually.");
 
-      // 4. Check what is still missing after merging all files
+      // Check what is still missing after merging
       const requiredKeys = ["age", "sex", "cp", "trestbps", "chol", "fbs", "restecg", "thalach", "exang", "oldpeak", "slope", "ca", "thal"];
-      const missing = requiredKeys.filter(key => mergedData[key] === null || mergedData[key] === undefined || mergedData[key] === "");
+      const missing = requiredKeys.filter(key => !mergedData[key]);
 
       if (missing.length > 0) {
         setMissingFields(missing);
         setError(`⚠️ Scanned ${files.length} file(s). Missed ${missing.length} parameters. Please fill highlighted fields.`);
-      } else {
-        setError(null);
       }
 
-      // 5. Update Form State
-      setForm((prev) => ({
-        ...prev,
-        ...mergedData,
-      }));
+      setForm((prev) => ({ ...prev, ...mergedData }));
 
     } catch (err) {
       setError(err.message);
     } finally {
       setScanning(false);
-      e.target.value = null; // Reset input to allow selecting same files again
+      e.target.value = null; 
     }
   };
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
-    
-    // Remove red highlight if user starts typing
     if (missingFields.includes(e.target.name)) {
         setMissingFields(prev => prev.filter(field => field !== e.target.name));
     }
@@ -105,6 +96,7 @@ const HeartFormModal = ({ close }) => {
     trestbps: Number(f.trestbps), chol: Number(f.chol), fbs: Number(f.fbs),
     restecg: Number(f.restecg), thalach: Number(f.thalach), exang: Number(f.exang),
     oldpeak: Number(f.oldpeak), slope: Number(f.slope), ca: Number(f.ca), thal: Number(f.thal),
+    cac_score: includeCAC ? Number(f.cac_score) : 0, // Only send if included
   });
 
   const submitForm = async (e) => {
@@ -131,13 +123,11 @@ const HeartFormModal = ({ close }) => {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) {
-        if (res.status === 401) throw new Error("Session expired. Please log in again.");
-        throw new Error(`Server Error: ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`Server Error: ${res.status}`);
 
       const prediction = await res.json();
       if (close) close();
+      // Pass data to result page
       navigate("/heart-result", { state: { form: payload, prediction } });
 
     } catch (err) {
@@ -159,7 +149,7 @@ const HeartFormModal = ({ close }) => {
           </h2>
         </div>
 
-        {/* ✅ SCANNER SECTION (UPDATED FOR MULTIPLE FILES) */}
+        {/* --- SCANNER SECTION --- */}
         <div style={scanContainer}>
           <label style={scanLabel}>
             {scanning ? <FaSync className="spin" /> : <FaFileMedical />} 
@@ -205,6 +195,31 @@ const HeartFormModal = ({ close }) => {
             <Field label="THALLIUM" name="thal" type="select" options={[1, 2, 3]} value={form.thal} onChange={handleChange} hint={["1: Normal", "2: Fixed", "3: Reversible"]} isMissing={missingFields.includes("thal")} />
           </div>
 
+          {/* --- CAC SCORE TOGGLE SECTION --- */}
+          <div style={cacSection}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <input 
+                type="checkbox" 
+                id="cac_toggle"
+                checked={includeCAC} 
+                onChange={(e) => setIncludeCAC(e.target.checked)}
+                style={{ width: "18px", height: "18px", cursor: "pointer" }}
+              />
+              <label htmlFor="cac_toggle" style={{ cursor: "pointer", fontWeight: "600", color: "#334155" }}>
+                Include CAC (Calcium) Score?
+              </label>
+            </div>
+
+            {includeCAC && (
+              <div style={{ marginTop: "15px" }}>
+                <Field label="CAC SCORE" name="cac_score" type="number" placeholder="e.g. 0 - 400+" value={form.cac_score} onChange={handleChange} />
+                <small style={{ color: "#94a3b8", fontSize: "11px", marginLeft: "150px" }}>
+                  *Coronary Artery Calcium (Agatston) Score
+                </small>
+              </div>
+            )}
+          </div>
+
           <div style={{ textAlign: "center", marginTop: 20 }}>
             <button type="submit" style={processBtn} disabled={loading || scanning}>
               {loading ? "Processing…" : "Process Data ❤️"}
@@ -219,7 +234,7 @@ const HeartFormModal = ({ close }) => {
   );
 };
 
-/* Field Component with Red Border Support */
+// --- SUB-COMPONENT FOR FIELDS ---
 const Field = ({ label, name, type, placeholder, value, onChange, options, hint, isMissing }) => {
     const dynamicInputStyle = {
         ...inputStyle,
@@ -243,26 +258,19 @@ const Field = ({ label, name, type, placeholder, value, onChange, options, hint,
     );
 };
 
-/* Styles */
-const scanContainer = { 
-  background: "#f8f9fa", 
-  padding: "15px", 
-  borderRadius: "15px", 
-  border: "2px dashed #be123c", 
-  textAlign: "center", 
-  marginBottom: "15px",
-  cursor: "pointer" 
-};
+// --- STYLES ---
+const overlayStyle = { position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(6px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999 };
+const modalStyle = { width: "85%", background: "#fff", borderRadius: 30, padding: "25px 30px", boxShadow: "0 10px 30px rgba(0,0,0,0.25)", maxHeight: "85vh", overflowY: "auto", position: "relative" };
+const closeBtn = { fontSize: 28, border: "none", background: "none", cursor: "pointer", position: "absolute", top: 12, right: 15 };
+const scanContainer = { background: "#f8f9fa", padding: "15px", borderRadius: "15px", border: "2px dashed #be123c", textAlign: "center", marginBottom: "15px", cursor: "pointer" };
 const scanLabel = { cursor: "pointer", color: "#be123c", fontWeight: "bold", fontSize: "14px", display: "flex", justifyContent: "center", alignItems: "center", gap: "10px" };
+const sectionTitle = { marginTop: 22, marginBottom: 8, fontSize: 16, color: "#444", fontWeight: 600, borderBottom: "2px solid #e0e0e0", paddingBottom: 4 };
+const row = { display: "flex", gap: 18, marginBottom: 12, flexWrap: "wrap" };
 const fieldBox = { flex: "1 1 250px", display: "flex", alignItems: "center", gap: 10 };
 const labelStyle = { width: 140, fontSize: 12, fontWeight: 600, color: "#333" };
 const inputStyle = { flex: 1, padding: 8, borderRadius: 10, fontSize: 13, outline: "none", transition: "border 0.2s" };
 const hintStyle = { fontSize: 11, color: "#777", width: 100, lineHeight: 1.3 };
-const overlayStyle = { position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(6px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999 };
-const modalStyle = { width: "85%", background: "#fff", borderRadius: 30, padding: "25px 30px", boxShadow: "0 10px 30px rgba(0,0,0,0.25)", maxHeight: "85vh", overflowY: "auto", position: "relative" };
-const closeBtn = { fontSize: 28, border: "none", background: "none", cursor: "pointer", position: "absolute", top: 12, right: 15 };
-const sectionTitle = { marginTop: 22, marginBottom: 8, fontSize: 16, color: "#444", fontWeight: 600, borderBottom: "2px solid #e0e0e0", paddingBottom: 4 };
-const row = { display: "flex", gap: 18, marginBottom: 12, flexWrap: "wrap" };
+const cacSection = { background: "#f8fafc", padding: "15px", borderRadius: "15px", border: "1px solid #e2e8f0", marginTop: "15px" };
 const processBtn = { backgroundSize: "200% auto", backgroundImage: "linear-gradient(to right, #00008b 0%, #00008b 50%, #ff0000 50%, #ff0000 100%)", color: "#fff", padding: "10px 22px", fontSize: 14, borderRadius: 16, cursor: "pointer", border: "none", transition: "0.4s ease", backgroundPosition: "right center" };
 
 export default HeartFormModal;

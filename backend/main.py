@@ -1,7 +1,7 @@
 from PIL import Image
 from pdf2image import convert_from_bytes
 from fastapi import UploadFile, File
-# from backend.ocr_utils import extract_parameters
+# from backend.ocr_utils import extract_parameters #normalize_value
 from ocr_utils import extract_parameters
 import io
 import os
@@ -78,11 +78,14 @@ client = OpenAI(
 
 # --- MODEL LOADING ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, "models", "heart_model.joblib")
+MODEL_PATH = os.path.join(BASE_DIR, "models", "medinauts_lgbm_final.joblib")
 model = None
 try:
     if os.path.exists(MODEL_PATH):
         model = load(MODEL_PATH)
+        print(f"✅ Loaded LightGBM Model from {MODEL_PATH}")
+    else:
+        print(f"❌ Model not found at {MODEL_PATH}")
 except Exception as e:
     print(f"❌ Error loading model: {e}")
 
@@ -92,19 +95,20 @@ class ChatRequest(BaseModel):
     message: str
 
 class HeartDiseaseRequest(BaseModel):
-    age: int
-    sex: int
-    cp: int
-    trestbps: int
-    chol: int
-    fbs: int
-    restecg: int
-    thalach: int
-    exang: int
+    age: float
+    sex: float
+    cp: float
+    trestbps: float
+    chol: float
+    fbs: float
+    restecg: float
+    thalach: float
+    exang: float
     oldpeak: float
-    slope: int
-    ca: int
-    thal: int
+    slope: float
+    ca: float
+    thal: float
+    cac_score: float = 0.0 # Default to 0
 
 class FeedbackModel(BaseModel):
     rating: int
@@ -135,7 +139,6 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-# ✅ NEW: Helper function to verify tokens
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -155,9 +158,8 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 
 @app.get("/")
 def home():
-    return {"message": "Medinauts API is running"}
+    return {"message": "Medinauts API v3.0 (LightGBM + CAC) is running"}
 
-# 1. REGISTER USER
 @app.post("/register")
 def register(user: UserCreate):
     if users_collection is None:
@@ -170,7 +172,6 @@ def register(user: UserCreate):
     users_collection.insert_one({"username": user.username, "password": hashed_pw})
     return {"message": "User created successfully"}
 
-# 2. LOGIN (Generate Token)
 @app.post("/token", response_model=Token)
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     if users_collection is None:
@@ -191,9 +192,7 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-# --- CHATBOT (Using LLM) ---
-
-# Default to LLM's
+# --- CHATBOT ---
 AI_MODEL_NAME = os.environ.get("AI_MODEL")
 
 @app.post("/chat")
@@ -204,7 +203,6 @@ def chat_endpoint(request: ChatRequest):
         Your goal is to assist users with heart health queries and explain how the prediction model works.
         Keep your answers helpful, medical, but concise. Always refer to Medinauts as 'we' or 'our platform'."""
 
-        # ✅ LLM CALL (No extra headers needed)
         completion = client.chat.completions.create(
             model=AI_MODEL_NAME,
             messages=[
@@ -212,13 +210,9 @@ def chat_endpoint(request: ChatRequest):
                 {"role": "user", "content": request.message}
             ],
         )
-
         reply_content = completion.choices[0].message.content
-        print(f"🤖 AI Reply: {reply_content}")
-
         if not reply_content:
             return {"reply": "I apologize, I'm thinking a bit slow right now. Could you ask that again?"}
-
         return {"reply": reply_content}
 
     except Exception as e:
@@ -230,84 +224,126 @@ async def scan_report(file: UploadFile = File(...)):
     try:
         contents = await file.read()
         image = None
-
-        # 1. Handle PDF Files
         if file.content_type == "application/pdf" or file.filename.lower().endswith(".pdf"):
             try:
-                # Convert first page of PDF to image
                 pages = convert_from_bytes(contents)
-                if pages:
-                    image = pages[0] # Take the first page
+                if pages: image = pages[0]
             except Exception as e:
-                print(f"❌ PDF Conversion Error: {e}")
-                raise HTTPException(status_code=400, detail="Could not convert PDF. Try uploading an Image.")
-
-        # 2. Handle Image Files (JPG, PNG)
+                raise HTTPException(status_code=400, detail="Could not convert PDF.")
         else:
             try:
                 image = Image.open(io.BytesIO(contents)).convert("RGB")
             except Exception:
                 raise HTTPException(status_code=400, detail="Invalid image file.")
 
-        if image is None:
-             raise HTTPException(status_code=400, detail="File could not be processed.")
-
-        # 3. Pass the valid image to your OCR utility
+        if image is None: raise HTTPException(status_code=400, detail="File could not be processed.")
         extracted_values = extract_parameters(image)
-        
         return {"status": "success", "data": extracted_values}
 
     except Exception as e:
         print(f"❌ Server Error: {e}")
-        # This details exactly why it failed in your frontend response
         raise HTTPException(status_code=500, detail=str(e))
 
+# ✅ CORRECTED: Predict Endpoint with STRICT Text Override Logic
 @app.post("/predict")
-# ✅ SECURED: Added 'get_current_user' dependency
 def predict(input_data: HeartDiseaseRequest, current_user: str = Depends(get_current_user)):
     if not model:
         raise HTTPException(status_code=500, detail="Model file not found")
-    features = [
-        input_data.age, input_data.sex, input_data.cp, input_data.trestbps,
-        input_data.chol, input_data.fbs, input_data.restecg, input_data.thalach,
-        input_data.exang, input_data.oldpeak, input_data.slope, input_data.ca,
-        input_data.thal
+    
+    # 1. Cleaning Layer (Round inputs)
+    clean_data = [
+        round(input_data.age),
+        int(max(0, min(1, round(input_data.sex)))),
+        int(max(0, min(3, round(input_data.cp)))),
+        input_data.trestbps,
+        input_data.chol,
+        int(max(0, min(1, round(input_data.fbs)))),
+        int(max(0, min(2, round(input_data.restecg)))),
+        input_data.thalach,
+        int(max(0, min(1, round(input_data.exang)))),
+        input_data.oldpeak,
+        int(max(0, min(2, round(input_data.slope)))),
+        int(max(0, min(3, round(input_data.ca)))),
+        int(max(0, min(2, round(input_data.thal))))
     ]
+    features = [clean_data] 
+
     try:
-        prediction = model.predict([features])[0].item()
-        probability = model.predict_proba([features])[0][1].item()
-        return {"prediction": int(prediction), "probability": float(probability)}
+        # 2. AI Prediction
+        probs = model.predict_proba(features)[0]
+        pred_class = int(np.argmax(probs))
+        
+        # Calculate Base ML Risk (Sum of probs 1-4)
+        ml_risk_score = round(np.sum(probs[1:]) * 100, 2)
+
+        # 3. CAC Logic (Calculate Risk Score Only)
+        cac_risk = 0.0
+        if input_data.cac_score > 0:
+            if input_data.cac_score >= 400:
+                cac_risk = 95.0
+            elif input_data.cac_score >= 100:
+                cac_risk = 75.0
+            elif input_data.cac_score > 0:
+                cac_risk = 25.0
+
+        # 4. Final Risk Decision (Highest of AI vs CAC)
+        final_risk_score = max(ml_risk_score, cac_risk)
+
+        # 5. Map to Text (Base AI Label)
+        disease_map = {
+            0: "Healthy Heart",
+            1: "Stage 1 (Mild)",
+            2: "Stage 2 (Moderate)",
+            3: "Stage 3 (Advanced)",
+            4: "Stage 4 (Severe)"
+        }
+        result_text = disease_map.get(pred_class, "Unknown")
+        
+        # Case A: Critical Plaque (CAC >= 400) -> Force Stage 3/4 Label
+        if input_data.cac_score >= 400:
+             if pred_class < 3: 
+                result_text = "Stage 3/4 (CAC Critical)"
+             else:
+                result_text = result_text + " (Critical Calcification)"
+
+        # Case B: Moderate Plaque (CAC 100 - 399) -> Force Stage 2 Label
+        elif input_data.cac_score >= 100:
+             if pred_class < 2: # If AI says Healthy(0) or Mild(1), override it
+                result_text = "Stage 2 (Moderate Plaque)"
+             else:
+                result_text = result_text + " (Moderate Plaque)"
+
+        # Case C: Mild Plaque (CAC 1 - 99) -> Append Warning
+        elif input_data.cac_score > 0:
+             result_text = result_text + " (Mild Calcification)"
+
+        return {
+            "prediction": pred_class,
+            "prediction_text": result_text, 
+            "probability": float(final_risk_score / 100),
+            "risk_score": final_risk_score
+        }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
 
 @app.post("/feedback")
 def save_feedback(feedback: FeedbackModel):
-    if not supabase:
-        raise HTTPException(status_code=503, detail="Supabase not configured")
+    if not supabase: raise HTTPException(status_code=503, detail="Supabase not configured")
     try:
         data = { "rating": feedback.rating, "message": feedback.message }
         supabase.table("feedbacks").insert(data).execute()
         return {"status": "success", "message": "Feedback saved"}
     except Exception as e:
-        print(f"❌ Database Error: {e}")
         return {"status": "error", "message": str(e)}
 
-# --- NEW ENDPOINT: GET USER COUNT ---
 @app.get("/user-count")
 def get_user_count():
-    # ✅ FIX: Explicitly check against None for current pymongo versions
-    if users_collection is None:
-        return {"count": 0}
-    
+    if users_collection is None: return {"count": 0}
     try:
-        # Get count of all users in the collection
-        count = users_collection.count_documents({})
-        # You can add a base number (like 50000) if you want it to look larger
-        display_count = count 
-        return {"count": display_count}
-    except Exception as e:
-        print(f"❌ Error fetching user count: {e}")
-        return {"count": 0} # Fallback to your static number
+        return {"count": users_collection.count_documents({})}
+    except Exception:
+        return {"count": 0}
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
