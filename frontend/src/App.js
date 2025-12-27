@@ -2,6 +2,9 @@ import React, { useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { FaFlag } from "react-icons/fa"; 
 
+// Import the SpeedInsights component
+import { SpeedInsights } from "@vercel/speed-insights/react"
+
 // Components
 import Navbar from "./components/Navbar";
 import Home from "./components/Home";
