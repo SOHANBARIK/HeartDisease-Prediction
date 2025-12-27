@@ -1,0 +1,30 @@
+# --- Core API Framework ---
+fastapi
+uvicorn
+python-multipart
+python-dotenv
+
+# --- Database & Authentication ---
+pymongo
+supabase
+passlib[bcrypt]
+bcrypt==4.0.1
+python-jose[cryptography]
+
+# --- AI & LLM ---
+openai
+
+# --- Machine Learning (Heart Disease Model) ---
+joblib
+scikit-learn
+numpy
+pandas
+lightgbm                 # ⚠️ REQUIRED for your new model
+
+# --- Medical Report OCR & Scanning ---
+pytesseract              # OCR Wrapper
+pdf2image                # PDF to Image conversion
+opencv-python-headless   # Computer Vision (Headless for Render)
+Pillow                   # Image processing
+fuzzywuzzy  #==0.18.0       # Text matching
+python-Levenshtein  #==0.23.0 # Speed up for fuzzywuzzy
