@@ -90,7 +90,7 @@ const FeedbackPopup = ({ onComplete }) => {
 
         {/* Red Title (from previous change) */}
         <h3 style={{ margin: "0 0 5px 0", color: "#d32f2f" }}>Wait! Before you go...</h3>
-        <p style={{ color: "#2b0ae4ff", fontSize: 14, marginTop: 0 }}>How would you rate this analysis?</p>
+        <p style={{ color: "#02000cff", fontSize: 18, marginTop: 0 }}>How would you rate this analysis?</p>
         
         <div style={{ fontSize: 35, cursor: "pointer", margin: "15px 0" }}>
           {[1, 2, 3, 4, 5].map((star) => (
