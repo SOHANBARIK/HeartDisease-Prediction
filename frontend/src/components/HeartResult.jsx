@@ -6,6 +6,8 @@ import jsPDF from "jspdf";
 import emailjs from "@emailjs/browser"; 
 
 import medinautsLogo from "./image_ce4908.png";
+// 🔴 ADDED: Import for the new feedback icon
+import feedbackIcon from "./image_1.png";
 
 const BACKEND_BASE = (process.env.REACT_APP_BACKEND_URL).replace(/\/$/, "");
 const FEEDBACK_URL = `${BACKEND_BASE}/feedback`;
@@ -91,8 +93,16 @@ const FeedbackPopup = ({ onComplete }) => {
   return (
     <div style={feedbackOverlay}>
       <div style={feedbackBox}>
-        <h3 style={{ margin: "0 0 10px 0", color: "#333" }}>Wait! Before you go...</h3>
-        <p style={{ color: "#666", fontSize: 14 }}>How would you rate this analysis?</p>
+        
+        {/* 🔴 ADDED: Centered feedback icon from image */}
+        <div style={{ marginBottom: "10px", display: "flex", justifyContent: "center" }}>
+          <img src={feedbackIcon} alt="Feedback Icon" style={{ width: "60px", height: "60px" }} />
+        </div>
+
+        {/* Red Title (from previous change) */}
+        <h3 style={{ margin: "0 0 5px 0", color: "#d32f2f" }}>Wait! Before you go...</h3>
+        <p style={{ color: "#2b0ae4ff", fontSize: 14, marginTop: 0 }}>How would you rate this analysis?</p>
+        
         <div style={{ fontSize: 35, cursor: "pointer", margin: "15px 0" }}>
           {[1, 2, 3, 4, 5].map((star) => (
             <span
@@ -102,15 +112,18 @@ const FeedbackPopup = ({ onComplete }) => {
             >★</span>
           ))}
         </div>
+
         <textarea
-          placeholder="Optional feedback..."
+          placeholder="Your feedback is Important..."
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           style={{ width: "100%", height: 60, padding: 8, borderRadius: 8, border: "1px solid #ccc", marginBottom: 15 }}
         />
+
         <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
           <button onClick={onComplete} style={{ ...btnStyle, background: "#eee", color: "#555" }}>Skip</button>
-          <button onClick={handleSubmit} disabled={rating === 0} style={{ ...btnStyle, background: rating > 0 ? "#00008b" : "#ccc", color: "#fff" }}>
+          {/* Red Submit button (from previous change) */}
+          <button onClick={handleSubmit} disabled={rating === 0} style={{ ...btnStyle, background: rating > 0 ? "#ef4444" : "#ccc", color: "#fff" }}>
             {submitting ? "Sending..." : "Submit"}
           </button>
         </div>
