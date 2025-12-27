@@ -9,6 +9,7 @@ const Login = () => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false); // New state for visibility
   const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
@@ -16,7 +17,6 @@ const Login = () => {
     setError("");
 
     if (isRegistering) {
-      // --- REGISTER LOGIC ---
       try {
         const res = await fetch(`${BACKEND_BASE}/register`, {
           method: "POST",
@@ -30,8 +30,6 @@ const Login = () => {
         setError(err.message);
       }
     } else {
-      // --- LOGIN LOGIC ---
-      // FastAPI expects form-data for OAuth2 login
       const formData = new URLSearchParams();
       formData.append("username", username);
       formData.append("password", password);
@@ -46,9 +44,8 @@ const Login = () => {
         if (!res.ok) throw new Error("Invalid credentials");
         
         const data = await res.json();
-        // Save token to localStorage
         localStorage.setItem("medinauts_token", data.access_token);
-        navigate("/"); // Redirect to Home
+        navigate("/"); 
       } catch (err) {
         setError(err.message);
       }
@@ -70,14 +67,26 @@ const Login = () => {
             style={inputStyle}
             required
           />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={inputStyle}
-            required
-          />
+          
+          {/* Password Wrapper */}
+          <div style={passwordWrapperStyle}>
+            <input
+              type={showPassword ? "text" : "password"} // Toggle type here
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              style={{...inputStyle, width: "100%"}} // Fill the wrapper
+              required
+            />
+            {/* Toggle Icon */}
+            <span 
+              onClick={() => setShowPassword(!showPassword)} 
+              style={toggleIconStyle}
+            >
+              {showPassword ? "🙈" : "👁️"}
+            </span>
+          </div>
+
           <button type="submit" style={buttonStyle}>
             {isRegistering ? "Sign Up" : "Log In"}
           </button>
@@ -97,12 +106,22 @@ const Login = () => {
   );
 };
 
-// Styles
+// --- STYLES ---
 const containerStyle = { height: "100vh", display: "flex", justifyContent: "center", alignItems: "center", background: "#f0f2f5" };
 const cardStyle = { padding: 40, background: "white", borderRadius: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", textAlign: "center", width: 350 };
 const formStyle = { display: "flex", flexDirection: "column", gap: 15, marginTop: 20 };
-const inputStyle = { padding: 12, borderRadius: 5, border: "1px solid #ddd", fontSize: 16 };
+const inputStyle = { padding: 12, borderRadius: 5, border: "1px solid #ddd", fontSize: 16, boxSizing: "border-box" };
 const buttonStyle = { padding: 12, background: "#b71c1c", color: "white", border: "none", borderRadius: 5, fontSize: 16, cursor: "pointer" };
 const linkStyle = { color: "#007bff", cursor: "pointer", fontWeight: "bold" };
+
+// New Styles for the toggle
+const passwordWrapperStyle = { position: "relative", display: "flex", alignItems: "center" };
+const toggleIconStyle = { 
+  position: "absolute", 
+  right: "10px", 
+  cursor: "pointer", 
+  fontSize: "18px",
+  userSelect: "none" 
+};
 
 export default Login;
