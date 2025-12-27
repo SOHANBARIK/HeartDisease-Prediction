@@ -5,6 +5,7 @@ import jsPDF from "jspdf";
 import emailjs from "@emailjs/browser"; 
 
 import medinautsLogo from "./image_ce4908.png";
+import feedbackIcon from "./image_1.png";
 
 // ✅ URL for Feedback (Ensure this matches your backend)
 const BACKEND_BASE = (process.env.REACT_APP_BACKEND_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
@@ -75,28 +76,34 @@ const FeedbackPopup = ({ onComplete }) => {
       console.error("Failed to send feedback:", error);
     }
     setSubmitting(false);
-    onComplete(); // Done, trigger parent close
+    onComplete(); 
   };
 
   return (
     <div style={feedbackOverlay}>
       <div style={feedbackBox}>
-        <h3 style={{ margin: "0 0 10px 0", color: "#333" }}>Wait! Before you go...</h3>
-        <p style={{ color: "#666", fontSize: 14 }}>How would you rate this analysis?</p>
+        
+        {/* 🔴 ADDED: Centered feedback icon from image */}
+        <div style={{ marginBottom: "10px", display: "flex", justifyContent: "center" }}>
+          <img src={feedbackIcon} alt="Feedback Icon" style={{ width: "60px", height: "60px" }} />
+        </div>
 
-        {/* Stars */}
+        {/* Red Title (from previous change) */}
+        <h3 style={{ margin: "0 0 5px 0", color: "#d32f2f" }}>Wait! Before you go...</h3>
+        <p style={{ color: "#2b0ae4ff", fontSize: 14, marginTop: 0 }}>How would you rate this analysis?</p>
+        
         <div style={{ fontSize: 35, cursor: "pointer", margin: "15px 0" }}>
           {[1, 2, 3, 4, 5].map((star) => (
             <span
               key={star}
               onClick={() => setRating(star)}
-              style={{ color: star <= rating ? "#FFD700" : "#ddd", margin: "0 5px", transition: "color 0.2s" }}
+              style={{ color: star <= rating ? "#FFD700" : "#ddd", margin: "0 5px" }}
             >★</span>
           ))}
         </div>
 
         <textarea
-          placeholder="Optional feedback..."
+          placeholder="Your feedback is Important..."
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           style={{ width: "100%", height: 60, padding: 8, borderRadius: 8, border: "1px solid #ccc", marginBottom: 15 }}
@@ -104,7 +111,8 @@ const FeedbackPopup = ({ onComplete }) => {
 
         <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
           <button onClick={onComplete} style={{ ...btnStyle, background: "#eee", color: "#555" }}>Skip</button>
-          <button onClick={handleSubmit} disabled={rating === 0} style={{ ...btnStyle, background: rating > 0 ? "#00008b" : "#ccc", color: "#fff" }}>
+          {/* Red Submit button (from previous change) */}
+          <button onClick={handleSubmit} disabled={rating === 0} style={{ ...btnStyle, background: rating > 0 ? "#ef4444" : "#ccc", color: "#fff" }}>
             {submitting ? "Sending..." : "Submit"}
           </button>
         </div>
@@ -112,10 +120,6 @@ const FeedbackPopup = ({ onComplete }) => {
     </div>
   );
 };
-
-const feedbackOverlay = { position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.6)", zIndex: 2000, display: "flex", justifyContent: "center", alignItems: "center" };
-const feedbackBox = { background: "white", padding: 30, borderRadius: 15, width: "90%", maxWidth: 350, textAlign: "center", boxShadow: "0 10px 30px rgba(0,0,0,0.3)" };
-const btnStyle = { padding: "8px 16px", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: "bold" };
 
 
 // --------------- MAIN COMPONENT ------------------
@@ -374,5 +378,8 @@ const pdfBtn = { padding: "10px 18px", background: "#d32f2f", color: "#fff", bor
 const footerContainer = { marginTop: "35px", paddingTop: "15px", borderTop: "1px solid #eaeaea", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", opacity: 0.8 };
 const footerLogo = { height: "24px", width: "auto", objectFit: "contain" };
 const footerText = { fontSize: "0.85rem", color: "#555", fontWeight: "500", fontFamily: "Helvetica, Arial, sans-serif" };
+const feedbackOverlay = { position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.6)", zIndex: 2000, display: "flex", justifyContent: "center", alignItems: "center" };
+const feedbackBox = { background: "white", padding: 30, borderRadius: 15, width: "350px", textAlign: "center" };
+const btnStyle = { padding: "8px 16px", border: "none", borderRadius: 8, cursor: "pointer" };
 
 export default HeartResultModal;
