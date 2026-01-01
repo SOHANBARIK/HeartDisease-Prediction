@@ -1,7 +1,6 @@
 from PIL import Image
 from pdf2image import convert_from_bytes
 from fastapi import UploadFile, File
-# from backend.ocr_utils import extract_parameters #normalize_value
 from ocr_utils import extract_parameters
 import io
 import os
@@ -17,6 +16,7 @@ from dotenv import load_dotenv
 from supabase import create_client, Client 
 from datetime import datetime, timedelta
 from pymongo import MongoClient
+from pymongo.errors import ServerSelectionTimeoutError # ✅ ADDED: For error handling
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 
@@ -41,18 +41,25 @@ if SUPABASE_URL and SUPABASE_KEY:
     except Exception as e:
         print(f"❌ Supabase Error: {e}")
 
+# ✅ FIX: Resilient MongoDB Connection
 mongo_client = None
 db = None
 users_collection = None
 
 if MONGODB_URL:
     try:
-        mongo_client = MongoClient(MONGODB_URL)
+        # Added timeouts and connect=False to handle "Idle Disconnects"
+        mongo_client = MongoClient(
+            MONGODB_URL,
+            serverSelectionTimeoutMS=5000,  # Fail fast (5s) if connection is bad
+            socketTimeoutMS=45000,          # Keep socket logic aligned with server
+            connect=False                   # Lazy connection (connects on first request)
+        )
         db = mongo_client["medinauts_db"] 
         users_collection = db["users"]    
-        print("✅ Connected to MongoDB")
+        print("✅ MongoDB Client Initialized (Lazy Connect)")
     except Exception as e:
-        print(f"❌ MongoDB Error: {e}")
+        print(f"❌ MongoDB Init Error: {e}")
 
 # Security Utils
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -165,31 +172,38 @@ def register(user: UserCreate):
     if users_collection is None:
         raise HTTPException(status_code=503, detail="Database not available")
     
-    if users_collection.find_one({"username": user.username}):
-        raise HTTPException(status_code=400, detail="Username already exists")
-    
-    hashed_pw = get_password_hash(user.password)
-    users_collection.insert_one({"username": user.username, "password": hashed_pw})
-    return {"message": "User created successfully"}
+    # Check connection by forcing a simple command if unsure, or let driver handle it
+    try:
+        if users_collection.find_one({"username": user.username}):
+            raise HTTPException(status_code=400, detail="Username already exists")
+        
+        hashed_pw = get_password_hash(user.password)
+        users_collection.insert_one({"username": user.username, "password": hashed_pw})
+        return {"message": "User created successfully"}
+    except ServerSelectionTimeoutError:
+         raise HTTPException(status_code=503, detail="Database Connection Timeout")
 
 @app.post("/token", response_model=Token)
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     if users_collection is None:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    user = users_collection.find_one({"username": form_data.username})
-    if not user or not verify_password(form_data.password, user["password"]):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
+    try:
+        user = users_collection.find_one({"username": form_data.username})
+        if not user or not verify_password(form_data.password, user["password"]):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect username or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user["username"]}, expires_delta=access_token_expires
         )
-    
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user["username"]}, expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
+        return {"access_token": access_token, "token_type": "bearer"}
+    except ServerSelectionTimeoutError:
+        raise HTTPException(status_code=503, detail="Database Connection Timeout")
 
 
 # --- CHATBOT ---
@@ -337,13 +351,23 @@ def save_feedback(feedback: FeedbackModel):
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+# ✅ FIX: Added /stats for the Landing Page Counter
+@app.get("/stats")
+def get_stats():
+    if users_collection is None: 
+        return {"count": 0}
+    try:
+        # count_documents({}) counts all records in the collection
+        count = users_collection.count_documents({})
+        return {"count": count}
+    except Exception:
+        # If DB is down, return 0 instead of crashing
+        return {"count": 0}
+
 @app.get("/user-count")
 def get_user_count():
-    if users_collection is None: return {"count": 0}
-    try:
-        return {"count": users_collection.count_documents({})}
-    except Exception:
-        return {"count": 0}
+    # Alias to the same logic, keeping it for backward compatibility
+    return get_stats()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))

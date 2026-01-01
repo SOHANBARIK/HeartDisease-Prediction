@@ -15,7 +15,7 @@ const HomePage = () => {
     const fetchUserCount = async () => {
       try {
         // Replace with your actual Render URL or process.env.REACT_APP_BACKEND_URL
-        const backendUrl = "https://heart-disease-prediction-evu2.onrender.com";
+        const backendUrl = (process.env.REACT_APP_BACKEND_URL).replace(/\/$/, "");
         const response = await fetch(`${backendUrl}/user-count`);
         const data = await response.json();
 
@@ -27,7 +27,7 @@ const HomePage = () => {
       } catch (error) {
         console.error("Error fetching user count:", error);
         // Optional: animate to a default if the backend is down
-        animate(count, 50000, { duration: 2 });
+        animate(count, 50, { duration: 2 });
       }
     };
 
@@ -105,7 +105,7 @@ const HomePage = () => {
                 fontFamily: "sans-serif"
               }}
             >
-              Protect Your <br />
+              Protect Your <br/>
               <span style={{ color: "#e11d48" }}>Heart Health</span> <br />
               With AI.
             </h1>

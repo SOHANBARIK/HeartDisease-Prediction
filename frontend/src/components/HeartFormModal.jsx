@@ -99,6 +99,7 @@ const HeartFormModal = ({ close }) => {
     cac_score: includeCAC ? Number(f.cac_score) : 0, // Only send if included
   });
 
+  // ✅ UPDATED: submitForm with Alert Logic
   const submitForm = async (e) => {
     e.preventDefault();
     setError(null);
@@ -131,6 +132,11 @@ const HeartFormModal = ({ close }) => {
       navigate("/heart-result", { state: { form: payload, prediction } });
 
     } catch (err) {
+      console.error("Prediction Failed", err);
+      
+      // ⚠️ ALERT THE USER (Added Logic)
+      alert("Connection to the AI server was lost. Please refresh the page or try again in a moment.");
+      
       setError(err.message || "Prediction failed");
     } finally {
       setLoading(false);
