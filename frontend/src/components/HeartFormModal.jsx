@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FaFileMedical, FaSync } from "react-icons/fa";
 
 // Ensure this matches your live Docker URL
-const BACKEND_BASE = (process.env.REACT_APP_BACKEND_URL || "https://heart-disease-prediction-1-fdo0.onrender.com").replace(/\/$/, "");
+const BACKEND_BASE = (process.env.REACT_APP_BACKEND_URL).replace(/\/$/, "");
 const PREDICT_URL = `${BACKEND_BASE}/predict`;
 const SCAN_URL = `${BACKEND_BASE}/scan-report`;
 
