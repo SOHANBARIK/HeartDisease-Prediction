@@ -47,12 +47,19 @@ users_collection = None
 
 if MONGODB_URL:
     try:
-        mongo_client = MongoClient(MONGODB_URL)
+        #Added timeouts and connect=False to handle "Idle Disconnects"
+        mongo_client = MongoClient(
+            MONGODB_URL, 
+            serverSelectionTimeoutMS=5000, # Fail fast (5s) if connection is bad
+            socketTimeoutMS=45000,         # Keep socket logic aligned with server
+            connect=False                  # Lazy connection (connects on first request)
+        )
         db = mongo_client["medinauts_db"] 
         users_collection = db["users"]    
         print("✅ Connected to MongoDB")
+        print("✅ Mongodb Client Initialized (Lazy Connect)")
     except Exception as e:
-        print(f"❌ MongoDB Error: {e}")
+        print(f"❌ MongoDB Init Error: {e}")
 
 # Security Utils
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
