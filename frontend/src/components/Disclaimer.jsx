@@ -42,13 +42,13 @@ const Disclaimer = () => {
         </button>
 
         <div style={headerStyle}>
-          <FaUserShield size={40} color="#00008b" />
+          <FaUserShield size={40} color="#cc1414ff" />
           <h1 style={titleStyle}>Medical Disclaimer & Guidance</h1>
         </div>
 
         <section style={sectionStyle}>
           <div style={warningBox}>
-            <FaExclamationTriangle color="#856404" size={24} />
+            <FaExclamationTriangle color="#e01717ff" size={48} />
             <p style={warningText}>
               <strong>IMPORTANT:</strong> Medinauts is an AI-powered screening tool, NOT a diagnostic replacement. 
               The results provided are statistical probabilities based on machine learning and should be discussed with a qualified cardiologist.
