@@ -7,12 +7,18 @@ const BACKEND_BASE = (process.env.REACT_APP_BACKEND_URL || "https://heart-diseas
 const PREDICT_URL = `${BACKEND_BASE}/predict`;
 const SCAN_URL = `${BACKEND_BASE}/scan-report`;
 
-const HeartFormModal = ({close}) => {
+const HeartFormModal = ({ close }) => {
   const navigate = useNavigate(); 
 
-  // const handleCancel = () => {
-  //   navigate("/"); 
-  // };
+  // ✅ FIX: Define the close handler properly
+  const handleClose = () => {
+    // 1. Navigate to Home Page (Change URL)
+    navigate("/");
+    
+    // 2. Also call the parent's close function (to update state immediately)
+    if (close) close(); 
+  };
+
   // 1. Initial State including cac_score
   const [form, setForm] = useState({
     age: "", sex: "", cp: "", trestbps: "", chol: "", fbs: "",
@@ -149,7 +155,9 @@ const HeartFormModal = ({close}) => {
   return (
     <div style={overlayStyle}>
       <div style={modalStyle}>
-        <button onClick={close} style={closeBtn}>×</button>
+        
+        {/* ✅ FIX: Use the handleClose function here */}
+        <button onClick={handleClose} style={closeBtn}>×</button>
 
         <div style={{ textAlign: "center", marginBottom: 10 }}>
           <h1 style={{ margin: 0, fontSize: 18, color: "red" }}>Medical Analysis</h1>
