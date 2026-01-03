@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import {Link, useNavigate } from "react-router-dom";
 import { FaFileMedical, FaSync } from "react-icons/fa";
 
 // Ensure this matches your live Docker URL
@@ -9,6 +9,11 @@ const SCAN_URL = `${BACKEND_BASE}/scan-report`;
 
 const HeartFormModal = ({ close }) => {
   const navigate = useNavigate();
+
+  // // 1. Cross Button: Cancels and goes Home (since they didn't agree)
+  // const handleCancel = () => {
+  //   navigate("/"); 
+  // };
 
   const [form, setForm] = useState({
     age: "", sex: "", cp: "", trestbps: "", chol: "", fbs: "",
@@ -209,6 +214,19 @@ const HeartFormModal = ({ close }) => {
           </div>
           <div style={row}>
             <Field label="THALLIUM" name="thal" type="select" options={[1, 2, 3]} value={form.thal} onChange={handleChange} hint={["1: Normal", "2: Fixed", "3: Reversible"]} isMissing={missingFields.includes("thal")} />
+          </div>
+
+          <div style={{ textAlign: "center", marginTop: "15px" }}>
+            <p style={{ fontSize: "12px", color: "#64748b" }}>
+              By processing, you agree to our{" "}
+              <Link 
+                to="/disclaimer" 
+                style={{ color: "#be123c", fontWeight: "bold", textDecoration: "underline" }}
+                onClick={close} // Closes the modal so user can see the disclaimer page
+              >
+                Medical Disclaimer
+              </Link>
+            </p>
           </div>
 
           <div style={{ textAlign: "center", marginTop: 20 }}>

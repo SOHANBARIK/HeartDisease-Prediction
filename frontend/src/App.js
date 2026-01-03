@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { FaFlag } from "react-icons/fa"; 
 
 // Import the SpeedInsights component
-import { SpeedInsights } from "@vercel/speed-insights/react"
+// import { SpeedInsights } from "@vercel/speed-insights/react"
 
 // Components
 import Navbar from "./components/Navbar";
@@ -15,6 +15,8 @@ import Login from "./components/Login";
 import HeartResult from "./components/HeartResult";
 import WebsiteTour from "./components/WebsiteTour";
 import Chatbot from "./components/Chatbot"; 
+import Disclaimer from "./components/Disclaimer";
+import HeartFormModal from "./components/HeartFormModal";
 
 import "./index.css"; 
 
@@ -36,6 +38,9 @@ function App() {
             <Route path="/contact" element={<Contact />} />
             <Route path="/heart-result" element={<HeartResult />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/disclaimer" element={<Disclaimer />} />
+            <Route path="/predict" element={<HeartFormModal />} />
+
           </Routes>
         </div>
 
