@@ -1,38 +1,55 @@
 import React, { useState, useEffect } from "react";
 import { FaPlay, FaHeart, FaCheck } from "react-icons/fa";
-// 1. Import Framer Motion for the rolling effect
+// 1. Import Router hooks
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import HeartFormModal from "./HeartFormModal"; 
 
 const HomePage = () => {
+  const navigate = useNavigate(); // Hook to change URL
+  const location = useLocation(); // Hook to read current URL
   const [showModal, setShowModal] = useState(false);
 
   // 2. Setup Motion Values for the counter
-  const count = useMotionValue(0); // Starts at 0
+  const count = useMotionValue(0); 
   const rounded = useTransform(count, (latest) => Math.round(latest).toLocaleString());
+
+  // 3. Sync Modal State with URL
+  useEffect(() => {
+    // If URL is "/predict", OPEN the modal
+    if (location.pathname === "/predict") {
+      setShowModal(true);
+    } 
+    // If URL is "/" (Home), CLOSE the modal
+    else {
+      setShowModal(false);
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     const fetchUserCount = async () => {
       try {
-        // Replace with your actual Render URL or process.env.REACT_APP_BACKEND_URL
-        const backendUrl = (process.env.REACT_APP_BACKEND_URL).replace(/\/$/, "");
+        const backendUrl = (process.env.REACT_APP_BACKEND_URL || "").replace(/\/$/, "");
         const response = await fetch(`${backendUrl}/user-count`);
         const data = await response.json();
 
-        // 3. Start the rolling animation to the real number from your MongoDB
         animate(count, data.count, {
-          duration: 2.5, // 2.5 seconds to complete the roll
+          duration: 2.5,
           ease: "easeOut",
         });
       } catch (error) {
         console.error("Error fetching user count:", error);
-        // Optional: animate to a default if the backend is down
         animate(count, 50, { duration: 2 });
       }
     };
 
     fetchUserCount();
   }, [count]);
+
+  // Helper to close modal by navigating back Home
+  const handleClose = () => {
+    navigate("/");
+  };
 
   return (
     <div style={{ width: "100%", overflowX: "hidden", minHeight: "100vh", backgroundColor: "#fff0f2" }}> 
@@ -134,6 +151,8 @@ const HomePage = () => {
 
             {/* Buttons */}
             <div style={{ display: "flex", gap: "15px", flexWrap: "wrap", marginBottom: "40px" }}>
+              
+              {/* ✅ UPDATE: Navigate to /predict on Click */}
               <button
                 className="tour-predict-btn"
                 style={{
@@ -148,7 +167,7 @@ const HomePage = () => {
                   whiteSpace: "nowrap",
                   boxShadow: "0 4px 12px rgba(190, 18, 60, 0.25)",
                 }}
-                onClick={() => setShowModal(true)}
+                onClick={() => navigate("/predict")}
               >
                 Start Prediction →
               </button>
@@ -188,7 +207,6 @@ const HomePage = () => {
                 <p style={{ margin: 0, fontSize: "0.9rem", color: "#6b7280" }}>Instant Results</p>
               </div>
               <div>
-                {/* 4. Use motion.p with the rounded transform for the rolling effect */}
                 <motion.p style={{ margin: 0, fontSize: "2rem", fontWeight: "800", color: "#111" }}>
                   {rounded}
                 </motion.p>
@@ -271,9 +289,16 @@ const HomePage = () => {
 
       {/* Modal Code */}
       {showModal && (
-        <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", zIndex: 2000, background: "rgba(255,255,255,0.4)", backdropFilter: "blur(10px)", display: "flex", justifyContent: "center", alignItems: "center" }} onClick={() => setShowModal(false)}>
-           <div style={{ background: "white", padding: "30px", borderRadius: "24px", maxWidth: "900px", width: "90%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)" }} onClick={e => e.stopPropagation()}>
-             <HeartFormModal close={() => setShowModal(false)} />
+        <div 
+            style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", zIndex: 2000, background: "rgba(255,255,255,0.4)", backdropFilter: "blur(10px)", display: "flex", justifyContent: "center", alignItems: "center" }} 
+            onClick={handleClose} // ✅ CLICKING OUTSIDE NAVIGATES HOME
+        >
+           <div 
+               style={{ background: "white", padding: "30px", borderRadius: "24px", maxWidth: "900px", width: "90%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)" }} 
+               onClick={e => e.stopPropagation()}
+           >
+             {/* ✅ PASS handleClose as the close prop */}
+             <HeartFormModal close={handleClose} />
            </div>
         </div>
       )}

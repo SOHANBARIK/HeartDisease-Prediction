@@ -11,9 +11,12 @@ const HeartFormModal = ({ close }) => {
   const navigate = useNavigate();
 
   // // 1. Cross Button: Cancels and goes Home (since they didn't agree)
-  // const handleCancel = () => {
-  //   navigate("/"); 
-  // };
+  const handleClose = () => {
+    navigate("/");
+
+  // 2. Also call the parent's close function (to update state immediately)
+    if (close) close(); 
+  };
 
   const [form, setForm] = useState({
     age: "", sex: "", cp: "", trestbps: "", chol: "", fbs: "",
@@ -161,7 +164,7 @@ const HeartFormModal = ({ close }) => {
   return (
     <div style={overlayStyle}>
       <div style={modalStyle}>
-        <button onClick={close} style={closeBtn}>×</button>
+        <button onClick={handleClose} style={closeBtn}>×</button>
 
         <div style={{ textAlign: "center", marginBottom: 10 }}>
           <h1 style={{ margin: 0, fontSize: 18, color: "red" }}>Medical Analysis</h1>
@@ -268,15 +271,7 @@ const Field = ({ label, name, type, placeholder, value, onChange, options, hint,
 };
 
 /* Styles */
-const scanContainer = { 
-  background: "#f8f9fa", 
-  padding: "15px", 
-  borderRadius: "15px", 
-  border: "2px dashed #be123c", 
-  textAlign: "center", 
-  marginBottom: "15px",
-  cursor: "pointer" 
-};
+const scanContainer = { background: "#f8f9fa", padding: "15px", borderRadius: "15px", border: "2px dashed #be123c", textAlign: "center", marginBottom: "15px",cursor: "pointer" };
 const scanLabel = { cursor: "pointer", color: "#be123c", fontWeight: "bold", fontSize: "14px", display: "flex", justifyContent: "center", alignItems: "center", gap: "10px" };
 const fieldBox = { flex: "1 1 250px", display: "flex", alignItems: "center", gap: 10 };
 const labelStyle = { width: 140, fontSize: 12, fontWeight: 600, color: "#333" };
