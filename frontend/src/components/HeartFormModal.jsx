@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FaFileMedical, FaSync } from "react-icons/fa";
 
 // Ensure this matches your live Render/Docker URL
@@ -7,9 +7,12 @@ const BACKEND_BASE = (process.env.REACT_APP_BACKEND_URL || "https://heart-diseas
 const PREDICT_URL = `${BACKEND_BASE}/predict`;
 const SCAN_URL = `${BACKEND_BASE}/scan-report`;
 
-const HeartFormModal = ({ close }) => {
-  const navigate = useNavigate();
+const HeartFormModal = ({close}) => {
+  const navigate = useNavigate(); 
 
+  // const handleCancel = () => {
+  //   navigate("/"); 
+  // };
   // 1. Initial State including cac_score
   const [form, setForm] = useState({
     age: "", sex: "", cp: "", trestbps: "", chol: "", fbs: "",
@@ -224,6 +227,19 @@ const HeartFormModal = ({ close }) => {
                 </small>
               </div>
             )}
+          </div>
+
+          <div style={{ textAlign: "center", marginTop: "15px" }}>
+            <p style={{ fontSize: "12px", color: "#64748b" }}>
+              By processing, you agree to our{" "}
+              <Link 
+                to="/disclaimer" 
+                style={{ color: "#be123c", fontWeight: "bold", textDecoration: "underline" }}
+                onClick={close} // Closes the modal so user can see the disclaimer page
+              >
+                Medical Disclaimer
+              </Link>
+            </p>
           </div>
 
           <div style={{ textAlign: "center", marginTop: 20 }}>
