@@ -144,7 +144,7 @@ const HeartFormModal = ({ close }) => {
       console.error("Prediction Failed", err);
       
       // ⚠️ ALERT THE USER (Added Logic)
-      alert("Connection to the AI server was lost. Please refresh the page or login again.");
+      alert("Connection to the server was lost. Please Login Again.");
       
       setError(err.message || "Prediction failed");
     } finally {
