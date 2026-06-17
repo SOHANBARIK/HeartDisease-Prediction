@@ -189,7 +189,8 @@ const HomePage = () => {
                   whiteSpace: "nowrap"
                 }}
                 onClick={() =>
-                  window.open("https://www.youtube.com/watch?v=dQw4w9WgXcQ", "_blank")
+                  // window.open("https://www.youtube.com/watch?v=dQw4w9WgXcQ", "_blank")
+                  window.open("https://www.linkedin.com/posts/sohan-barik-b6a464286_machinelearning-artificialintelligence-healthtech-ugcPost-7430904134217814016-SGhW/?utm_source=share&utm_medium=member_desktop&rcm=ACoAAEV6l4IBORbzW4vo9KU_MAAZAn9DZiF1-ww", "_blank")
                 }
               >
                 <FaPlay size={12} /> Watch Demo
