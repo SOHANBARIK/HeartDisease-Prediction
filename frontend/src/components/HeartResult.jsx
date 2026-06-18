@@ -526,17 +526,26 @@ const HeartResultModal = () => {
   const [isSending, setIsSending] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
 
-  const finalRiskScore = prediction ? prediction.risk_score : 0;
-  const isHighRisk = finalRiskScore >= 50; 
-  const stage = prediction ? prediction.prediction : 0;
+  // ✅ ROBUST RISK SCORE PARSER:
+  // If the backend sends 0.26, it becomes 26. If the backend sends 26, it stays 26. 
+  // It falls back to the local `calculateRisk` heuristic if the backend didn't respond.
+  let rawScore = prediction ? parseFloat(prediction.risk_score ?? prediction.probability ?? 0) : 0;
+  if (isNaN(rawScore)) rawScore = 0;
+  const heuristicScore = calculateRisk(form);
   
+  const finalRiskScore = prediction 
+    ? (rawScore <= 1 && rawScore > 0 ? Math.round(rawScore * 100) : Math.round(rawScore))
+    : heuristicScore;
+
+  const isHighRisk = finalRiskScore >= 50; 
+  const stage = prediction ? Number(prediction.prediction) : 0;
   const stageColor = (isHighRisk && stage === 0) ? stageColorMap[3] : (stageColorMap[stage] || "#22c55e");
   
+  const hasHeartDisease = stage > 0 || isHighRisk;
+
   const predictionText = (prediction && prediction.prediction_text) 
     ? String(prediction.prediction_text) 
-    : (isHighRisk ? "Potential Risk Detected" : "Low Risk Detected");
-
-  const hasHeartDisease = stage > 0 || isHighRisk;
+    : (hasHeartDisease ? "Potential Risk Detected" : "Low Risk Detected");
 
   const HeartIcon = (
     <motion.div
@@ -680,7 +689,7 @@ const HeartResultModal = () => {
       "Not getting enough sleep"
     ];
 
-    // ✅ FIX: Changed to a single vertical column to prevent text overlap in the PDF
+    // ✅ FIXED: PDF 'What to Avoid' rendered as a single vertical column to prevent overlap
     const startX = 25;
     let currentAvoidY = p2Y;
 
@@ -696,7 +705,7 @@ const HeartResultModal = () => {
 
   const handleDownloadPDF = async () => {
     const doc = await createPDFDocument();
-    doc.save(`Medinauts_Report_${patientName.trim()}.pdf`);
+    doc.save(`Medinauts_Report_${patientName.trim() || "Patient"}.pdf`);
   };
 
   const handleSendEmail = async () => {
@@ -791,7 +800,7 @@ const HeartResultModal = () => {
             </div>
           )}
 
-          {/* What to Avoid Section (UI remains as a grid) */}
+          {/* What to Avoid Section (UI remains as a CSS grid) */}
           <div style={{ ...precautionsContainer, background: "#fffaf0", borderLeft: "5px solid #f97316" }}>
             <h3 style={{ ...sectionTitle, color: "#ea580c" }}>🚫 What to Avoid</h3>
             <p style={{ fontSize: "0.95rem", color: "#555", margin: "0 0 10px 0" }}>
@@ -823,7 +832,21 @@ const HeartResultModal = () => {
   );
 };
 
-// --- STYLES ---
+// ---------------- STYLES & FALLBACKS ----------------
+// ✅ RE-ADDED: Fallback algorithm to ensure app doesn't crash to 0% if server is offline
+function calculateRisk(data) {
+  if (!data) return 0;
+  let score = 0;
+  if (data.age > 50) score += 15;
+  if (data.chol > 200) score += 15;
+  if (data.trestbps > 130) score += 10;
+  if (data.exang === 1) score += 20;
+  if (data.cp >= 2) score += 15;
+  if (data.thalach < 120) score += 10;
+  if (data.oldpeak > 2.0) score += 15;
+  return Math.min(score, 95);
+}
+
 const overlay = { position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(5px)" };
 const card = { width: "90%", maxWidth: "900px", background: "#fff", borderRadius: "25px", padding: "40px", position: "relative", maxHeight: "90vh", overflowY: "auto" };
 const closeBtn = { position: "absolute", top: 20, right: 20, fontSize: 30, border: "none", background: "none", cursor: "pointer" };
