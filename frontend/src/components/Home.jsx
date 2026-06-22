@@ -145,7 +145,7 @@ const HomePage = () => {
               }}
             >
               MediNauts utilizes advanced Machine Learning algorithms to
-              predict heart disease risk with 100% accuracy. Early detection
+              predict heart disease risk with 90% accuracy. Early detection
               saves lives.
             </div>
 
@@ -199,7 +199,7 @@ const HomePage = () => {
             {/* Stats */}
             <div className="tour-stats" style={{ display: "flex", gap: "40px" }}>
               <div>
-                <p style={{ margin: 0, fontSize: "2rem", fontWeight: "800", color: "#111" }}>100%</p>
+                <p style={{ margin: 0, fontSize: "2rem", fontWeight: "800", color: "#111" }}>90%</p>
                 <p style={{ margin: 0, fontSize: "0.9rem", color: "#6b7280" }}>Accuracy Rate</p>
               </div>
               <div>
